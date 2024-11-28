@@ -15,7 +15,7 @@ void delays (int count){
 volatile const int led_delay = 100;
 volatile int led_state = 0;
 volatile int led_timer = 0;
-volatile char *VGA = (volatile char *)0x08000000; // Base framebuffer address
+volatile char *VGA = (volatile char *)0x08000000; 
 
 //get info about the button under the reset button
 int get_btn(void) {
@@ -24,63 +24,66 @@ int get_btn(void) {
 
 }
 
-void handle_interrupt(unsigned cause     ) {
+void handle_interrupt(unsigned cause) {
     // Handle the interrupt logic here
-    
+   
     //type of interrupt
-    int interrupt = cause & 0x3FFFFFFF;  // Mask with 30 bits set
+    //int interrupt = cause & 0x3FFFFFFF;  // Mask with 30 bits set
+    //if(interrupt == 16){
+        
+    //}
 
     //led lamps that increment the binary value displayed on 
     //the first 4 LED
-    int led0 = 0b1;
-    int led1 = 0b11;
-    int led2 = 0b111;
-    int led3 = 0b1111;
-    int led4 = 0b11111;
-    int led5 = 0b111111;
-    int led6 = 0b1111111;
-    int led7 = 0b11111111;
-    int led8 = 0b111111111;
-    int led9 = 0b1111111111;
+    //int led0 = 0b1;
+    //int led1 = 0b11;
+    //int led2 = 0b111;
+    //int led3 = 0b1111;
+    //int led4 = 0b11111;
+    //int led5 = 0b111111;
+    //int led6 = 0b1111111;
+    //int led7 = 0b11111111;
+    //int led8 = 0b111111111;
+    //int led9 = 0b1111111111;
 
-    if(interrupt == 16){  
-        led_timer++;
+    // if(interrupt == 16){  
+    //     led_timer++;
 
-        const int charging_delay = -100;
+    //     const int charging_delay = -100;
 
-        if(led_timer >= led_delay){
+    //     if(led_timer >= led_delay){
 
-        switch (led_state)
-        {
-            case 0: set_leds(led0); break;
-            case 1: set_leds(led1); break;
-            case 2: set_leds(led2); break;
-            case 3: set_leds(led3); break;
-            case 4: set_leds(led4); break;
-            case 5: set_leds(led5); break;
-            case 6: set_leds(led6); break;
-            case 7: set_leds(led7); break;
-            case 8: set_leds(led8); break;
-            case 9: set_leds(led9); break;
-            default: break;
-        }
+    //     switch (led_state)
+    //     {
+    //         case 0: set_leds(led0); break;
+    //         case 1: set_leds(led1); break;
+    //         case 2: set_leds(led2); break;
+    //         case 3: set_leds(led3); break;
+    //         case 4: set_leds(led4); break;
+    //         case 5: set_leds(led5); break;
+    //         case 6: set_leds(led6); break;
+    //         case 7: set_leds(led7); break;
+    //         case 8: set_leds(led8); break;
+    //         case 9: set_leds(led9); break;
+    //         default: break;
+    //     }
         
-        if(get_btn() && led_state >= 9){
-            set_leds(0b0);
-            led_timer = charging_delay;
-            led_state = -1; 
-        }
+    //     if(get_btn() && led_state >= 9){
+    //         set_leds(0b0);
+    //         led_timer = charging_delay;
+    //         led_state = -1; 
+    //     }
 
-        led_state++;   
-        if(led_timer < 0){
-            led_timer = led_timer + 10;
-        }
-        else{
-            //reset timer
-            led_timer=0;
-        }
-        }
-    }
+    //     led_state++;   
+    //     if(led_timer < 0){
+    //         led_timer = led_timer + 10;
+    //     }
+    //     else{
+    //         //reset timer
+    //         led_timer=0;
+    //     }
+    //     }
+    // }
 }
 
 
@@ -89,18 +92,12 @@ void labinit(void)
   volatile unsigned short *periodL = (volatile unsigned short*) 0x04000028;
   volatile unsigned short *periodH = (volatile unsigned short*) 0x0400002c;
  
-  *(periodL) = (29999999/1000) & 0xFFFF;
-  *(periodH) = (29999999/1000) >> 16;
+  *(periodL) = (29999999/10000) & 0xFFFF;
+  *(periodH) = (29999999/10000) >> 16;
 
-  
+  //start timer
   volatile unsigned short* ctrl = (volatile unsigned short*) 0x04000024;
   *ctrl = 0b111;
-
-    // Enable interrupt for the timer
-    volatile unsigned short* interruptmask = (volatile unsigned short*) 0x04000018;
-    *interruptmask = 0b10;
-  
-  enable_interrupt();
 }
 
 
@@ -140,35 +137,44 @@ struct platform {
     int length; 
 };
 
-// void generete_platforms(arr[]){
-//     int h = 10;
-//     int w = 40;
-
-//     for(int i = 0; i < 10; i++){
-//     }
-// }
-
 int main( void )
 {
     
     //create leds that light up with time
     labinit();
 
-     int x = 160;
+    //timeout
+    volatile unsigned short* timer_TO = (unsigned short*) 0x4000020;
+     
+    int led0 = 0b1;
+    int led1 = 0b11;
+    int led2 = 0b111;
+    int led3 = 0b1111;
+    int led4 = 0b11111;
+    int led5 = 0b111111;
+    int led6 = 0b1111111;
+    int led7 = 0b11111111;
+    int led8 = 0b111111111;
+    int led9 = 0b1111111111;
+
+
+    //charachter infor
+    int x = 160;
     int y = 180;
     int size = 20;
     int color = 0x00;
+
+    int jump_height = 70;
 
     for(int i = 0; i < 320 * 240; i++){
         VGA[i] = 87;
     }
 
     struct platform platforms[3];
-
     //Ground
     draw_platform(VGA, 0, 200, 320, 40, 0x78);
     platforms[0] = (struct platform){0, 200, 320};
-
+    
     draw_platform(VGA, 40, 150, 70, 10, 0x00);
     platforms[1] = (struct platform){40,150,70};
 
@@ -176,9 +182,36 @@ int main( void )
     platforms[2] = (struct platform){200, 100, 70};
 
     while (1) {
+        if(*timer_TO & 0x1){
+            led_timer++;
+
+            const int charging_delay = -100;
+
+
+                switch (led_state)
+                {
+                    case 0: set_leds(led0); break;
+                    case 1: set_leds(led1); break;
+                    case 2: set_leds(led2); break;
+                    case 3: set_leds(led3); break;
+                    case 4: set_leds(led4); break;
+                    case 5: set_leds(led5); break;
+                    case 6: set_leds(led6); break;
+                    case 7: set_leds(led7); break;
+                    case 8: set_leds(led8); break;
+                    case 9: set_leds(led9); break;
+                    default: break;
+                }
+            led_state++;
+            if(get_btn() && led_state >= 9){
+                set_leds(0b0);
+                led_state = -1; 
+            } 
+        }
+        
         int collision = 0;
         //Jump up
-        for (int i = 0; i < 100; i++){
+        for (int i = 0; i < jump_height; i++){
             draw_rectangle(VGA, x, y, size, 87);
                 if (get_sw()) {
                 long long switches = get_sw();
@@ -258,7 +291,7 @@ int main( void )
 
 
         draw_rectangle(VGA, x, y, size, color);
-        delays(5000);
+        delays(400000);
     }
     
     return 0;
