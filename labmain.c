@@ -214,6 +214,7 @@ int main( void )
 
     //Ground
     draw_platform(VGA, 100, 220, 70, 10, 0x00);
+  
     platforms[0] = (struct platform){120, 200, 70};
     
     //first platform
@@ -263,12 +264,13 @@ int main( void )
             draw_all_platforms(platforms, amount_platforms);
 
             //changing the direction of the charcter trhough switches
-           if (get_sw()) {
-                long long switches = get_sw();
+
+            if (get_sw()) {
+                long switches = get_sw();
 
                 int right_switch = (switches >> (9)) & 0x1;
                 int left_switch = (switches) & 0x1;
-
+                //the right switch controlling the jumping
                 if (right_switch) {
                     draw_rectangle(VGA, x, y, size, 87);
                     x-=1;
@@ -276,7 +278,8 @@ int main( void )
                         x = 320-size;
                     }
                 }
-    
+                
+                //the left switch controlling the jumping
                 if (left_switch) {
                     draw_rectangle(VGA, x, y, size, 87);
                     x += 1;
