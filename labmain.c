@@ -10,12 +10,47 @@ volatile int amount_platforms = 3;
 void handle_interrupt(unsigned cause) {
 }
 
+
+
 //set the leds on the board
 void set_leds(int led_mask) {
   volatile int *leds = (volatile int*) 0x04000000;
 
   *leds = led_mask;
 }
+
+void set_led_state(int led_state) {
+
+    //leds 0-9 on the board
+    int led0 = 0b1;
+    int led1 = 0b11;
+    int led2 = 0b111;
+    int led3 = 0b1111;
+    int led4 = 0b11111;
+    int led5 = 0b111111;
+    int led6 = 0b1111111;
+    int led7 = 0b11111111;
+    int led8 = 0b111111111;
+    int led9 = 0b1111111111;
+
+    //turn on the leds after certain delay (based on timer)
+    //they will turn on in order    
+    switch (led_state){
+        case 0: set_leds(led0); break;
+        case 1: set_leds(led1); break;
+        case 2: set_leds(led2); break;
+        case 3: set_leds(led3); break;
+        case 4: set_leds(led4); break;
+        case 5: set_leds(led5); break;
+        case 6: set_leds(led6); break;
+        case 7: set_leds(led7); break;
+        case 8: set_leds(led8); break;
+        case 9: set_leds(led9); break;
+        default: break;
+    }
+
+}
+
 
 //delay
 void delays (int count){
@@ -71,6 +106,16 @@ void set_displays(int display_number, int value) {
   }
   *segm7 = output;
 
+}
+
+void set_points(int points) {
+
+    int temp_points = points;  // Copy points to avoid altering it
+    for (int p = 0; p < 6; p++) {
+        int digit = temp_points % 10;  // Get the last decimal digit
+        set_displays(p, digit);
+        temp_points /= 10;  // Remove the last digit
+    }
 }
 
 
@@ -138,6 +183,7 @@ struct platform {
     int length; 
 };
 
+
 void draw_all_platforms(struct platform platforms[], int length){
     for(int i = 0; i < length; i++){
         //draw_all_platforms(platforms, 3);
@@ -162,7 +208,6 @@ void generate_new_platform(struct platform platforms[], int length){
     platforms[length-1].y_pos = 100;
     platforms[length-1].length = 70;
     current_platform_coordnr ++;
-
 }
 
 void background(){
@@ -176,28 +221,17 @@ void background(){
 
 int main( void )
 {
+    //Sets the score to 0
     for (int i = 0; i < 6; i++) {
       set_displays(i, 0);
     }  
+
     //create leds that light up with time
     labinit();
 
     //timeout
     volatile unsigned short* timer_TO = (unsigned short*) 0x4000020;
     
-    //leds 0-9 on the board
-    int led0 = 0b1;
-    int led1 = 0b11;
-    int led2 = 0b111;
-    int led3 = 0b1111;
-    int led4 = 0b11111;
-    int led5 = 0b111111;
-    int led6 = 0b1111111;
-    int led7 = 0b11111111;
-    int led8 = 0b111111111;
-    int led9 = 0b1111111111;
-
-
     //charachter info
     int x = 160;
     int y = 200;
@@ -210,7 +244,6 @@ int main( void )
 
     //have three platforms in the game
     struct platform platforms[amount_platforms];
-
 
     //Ground
     draw_platform(VGA, 100, 220, 70, 10, 0x00);
@@ -226,25 +259,14 @@ int main( void )
     platforms[2] = (struct platform){150, 150, 70};
 
     while (1) {
+
+        draw_all_platforms(platforms, amount_platforms);
+
         //power up bar that depends on polling from a timer
         if(*timer_TO & 0x1){
 
-            //turn on the leds after certain delay (based on timer)
-            //they will turn on in order    
-            switch (led_state){
-                case 0: set_leds(led0); break;
-                case 1: set_leds(led1); break;
-                case 2: set_leds(led2); break;
-                case 3: set_leds(led3); break;
-                case 4: set_leds(led4); break;
-                case 5: set_leds(led5); break;
-                case 6: set_leds(led6); break;
-                case 7: set_leds(led7); break;
-                case 8: set_leds(led8); break;
-                case 9: set_leds(led9); break;
-                default: break;
-            }
-
+            //Sets the leds to the current state
+            set_led_state(led_state);
             //increase nr of leds for the next time
             led_state++;
 
@@ -254,17 +276,12 @@ int main( void )
                 led_state = -1; 
             } 
         }
-        
-        //if this is 1 then there has been a collision
-        int collision = 0;
 
         //Jump up
         for (int i = 0; i < jump_height; i++){
             draw_rectangle(VGA, x, y, size, 87);
             draw_all_platforms(platforms, amount_platforms);
-
             //changing the direction of the charcter trhough switches
-
             if (get_sw()) {
                 long switches = get_sw();
 
@@ -288,22 +305,20 @@ int main( void )
                     }
 
                 }
-                draw_character(VGA, x, y, size, color);
             }
-            draw_rectangle(VGA, x, y, size, 87);
-            //decrease the y-coordinates when jumping up
             y--;
-            
+            draw_rectangle(VGA, x, y, size, color);
+
+        
             //specifially when colliding with the platform the platforms should be genereted
             for(int k = 0; k < amount_platforms; k++){
-                if(platforms[k].y_pos -10 == y + size){
+                if(platforms[k].y_pos + 10 == y + size){
                     if(x+(size/2) > platforms[k].x_pos && x+(size/2) < platforms[k].x_pos + platforms[k].length){
-                        print("hello");
                         //draw_all_platforms(platforms, 3);
                         int x = platforms[k].x_pos;
                         int y = platforms[k].y_pos;
                         int size_x = platforms[k].length;
-                        draw_platform(VGA, x, y, size_x, 10,0x78);
+                        draw_platform(VGA, x, y, size_x, 10,0x0);
                     }
                 }
             }
@@ -311,6 +326,10 @@ int main( void )
             draw_rectangle(VGA, x, y, size, color);
             delays(100000);
         }
+
+
+        //if this is 1 then there has been a collision
+        int collision = 0;
 
         //Jump down
         for (int i = 0; i < jump_height; i++){
@@ -381,17 +400,16 @@ int main( void )
                     generate_new_platform(platforms, amount_platforms); // Replace platform
                     }
                 }
+
                 points += 0b1;
-                for(int p = 0; p <6; p++){
-                        int value = (points >> (4*p)) & 0xF;  //extract 4 bits at a time
-                        set_displays(p, value);
-                }
+                set_points(points);
+
                 break;
             }
             //death 
             if(y + size == 240) {
                 for (int i = 0; i < 320 * 240; i++) {
-                VGA[i] = 0x0E; 
+                VGA[i] = 320; 
                 }
                 print("You died");
                 return 0;
