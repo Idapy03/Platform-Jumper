@@ -100,6 +100,19 @@ void draw_rectangle(volatile char *VGA, int x, int y, int size, char color) {
     }
 }
 
+void draw_character(volatile char *VGA, int x, int y , int size, char color){
+    //draw main
+    draw_rectangle(VGA, x, y, size, color);
+
+    if(x < 0){
+        draw_rectangle(VGA, 320+x, y, size, color);
+    }
+    else if(x + size > 320){
+        draw_rectangle(VGA, x-320, y, size, color);
+    }
+
+}
+
 //get info about switches
 int get_sw(void) {
   volatile int* toggle = (volatile int*) 0x04000010;
@@ -201,7 +214,8 @@ int main( void )
 
     //Ground
     draw_platform(VGA, 100, 220, 70, 10, 0x00);
-    platforms[0] = (struct platform){0, 200, 70};
+  
+    platforms[0] = (struct platform){120, 200, 70};
     
     //first platform
     draw_platform(VGA, 40, 100, 70, 10, 0x00);
@@ -250,6 +264,7 @@ int main( void )
             draw_all_platforms(platforms, amount_platforms);
 
             //changing the direction of the charcter trhough switches
+
             if (get_sw()) {
                 long switches = get_sw();
 
@@ -258,21 +273,24 @@ int main( void )
                 //the right switch controlling the jumping
                 if (right_switch) {
                     draw_rectangle(VGA, x, y, size, 87);
-                    if (x != 0) {
-                        x -= 1;
+                    x-=1;
+                    if (x < 0) {
+                        x = 320-size;
                     }
                 }
                 
                 //the left switch controlling the jumping
                 if (left_switch) {
                     draw_rectangle(VGA, x, y, size, 87);
-                    if (x + size != 320) {
-                        x += 1;
+                    x += 1;
+                    if (x + size > 320) {
+                        x = 0;
                     }
 
                 }
-                draw_all_platforms(platforms, amount_platforms);
+                draw_character(VGA, x, y, size, color);
             }
+            draw_rectangle(VGA, x, y, size, 87);
             //decrease the y-coordinates when jumping up
             y--;
             
@@ -296,10 +314,9 @@ int main( void )
 
         //Jump down
         for (int i = 0; i < jump_height; i++){
-
             draw_rectangle(VGA, x, y, size, 87);
-            if (get_sw()) {
-                draw_all_platforms(platforms, amount_platforms);
+            draw_all_platforms(platforms, amount_platforms);
+           if (get_sw()) {
                 long long switches = get_sw();
 
                 int right_switch = (switches >> (9)) & 0x1;
@@ -307,18 +324,26 @@ int main( void )
 
                 if (right_switch) {
                     draw_rectangle(VGA, x, y, size, 87);
-                    if (x != 0) {
-                        x -= 1;
+                    x-=1;
+                    if (x < 0) {
+                        x = 320-size;
                     }
                 }
     
                 if (left_switch) {
                     draw_rectangle(VGA, x, y, size, 87);
-                    if (x + size != 320) {
-                        x += 1;
+                    x += 1;
+                    if (x + size > 320) {
+                        x = 0;
                     }
+
                 }
+                draw_character(VGA, x, y, size, color);
             }
+            
+            //draw the character at the new position 
+            draw_rectangle(VGA, x, y, size, 87);
+            //draw_character(VGA, x, y, size, color);
             //increase the y-coordinates when jumping down
             y++;
             //draw the character at the new position 
