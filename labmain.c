@@ -258,6 +258,7 @@ int main( void )
     draw_platform(VGA, 150, 150, 70, 10, 0x00);
     platforms[2] = (struct platform){150, 150, 70};
 
+    background();
     while (1) {
 
         draw_all_platforms(platforms, amount_platforms);
@@ -270,8 +271,17 @@ int main( void )
             //increase nr of leds for the next time
             led_state++;
 
-            //if the button is pressed the leds should reset (character should jump faster?)
+            //if the button is pressed the leds should reset (character should jump faster?) 
             if(get_btn() && led_state >= 9){
+                background();
+                points += 0b1100;
+                while(y > 70 ){
+                    y--;
+                    draw_rectangle(VGA, x, y, size, 87);
+                    draw_all_platforms(platforms, amount_platforms);
+                    delays(100);
+                } 
+                
                 set_leds(0b0);
                 led_state = -1; 
             } 
@@ -421,6 +431,6 @@ int main( void )
         draw_rectangle(VGA, x, y, size, color);
         delays(100000);
     }
-    
+    print(points);
     return 0;
 }
