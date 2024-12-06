@@ -8,9 +8,8 @@ volatile int points = 0;
 volatile int amount_platforms = 3;
 
 void handle_interrupt(unsigned cause) {
+
 }
-
-
 
 //set the leds on the board
 void set_leds(int led_mask) {
@@ -201,7 +200,7 @@ void generate_new_platform(struct platform platforms[], int length){
         struct platform temp = platforms[i+1];
         platforms[i] = temp;
     }
-    if(current_platform_coordnr == sizeof(platform_coordinates) - 1){
+    if(current_platform_coordnr > 8){
         current_platform_coordnr = 0;
     }
     platforms[length-1].x_pos = platform_coordinates[current_platform_coordnr];
@@ -216,6 +215,29 @@ void background(){
         VGA[i] = 87;
     }
 }
+
+void handle_switch_control(int *x, int y, int size) {
+    int switches = get_sw();
+
+    int right_switch = (switches >> 9) & 0x1;
+    int left_switch = switches & 0x1;
+
+    if (right_switch) {
+        *x -= 1;
+        if (*x < 0) {
+            *x = 320 - size;
+        }
+    }
+
+    if (left_switch) {
+        *x += 1;
+        if (*x + size > 320) {
+            *x = 0;
+        }
+    }
+    draw_character(VGA, x, y, size, 87);
+}
+
 
 
 
@@ -252,11 +274,11 @@ int main( void )
     
     //first platform
     draw_platform(VGA, 40, 100, 70, 10, 0x00);
-    platforms[1] = (struct platform){40,100,70};
+    platforms[2] = (struct platform){40,100,70};
 
     //second platform
     draw_platform(VGA, 150, 150, 70, 10, 0x00);
-    platforms[2] = (struct platform){150, 150, 70};
+    platforms[1] = (struct platform){150, 150, 70};
 
     background();
     while (1) {
@@ -289,33 +311,9 @@ int main( void )
 
         //Jump up
         for (int i = 0; i < jump_height; i++){
-            draw_rectangle(VGA, x, y, size, 87);
             draw_all_platforms(platforms, amount_platforms);
-            //changing the direction of the charcter trhough switches
-            if (get_sw()) {
-                long switches = get_sw();
-
-                int right_switch = (switches >> (9)) & 0x1;
-                int left_switch = (switches) & 0x1;
-                //the right switch controlling the jumping
-                if (right_switch) {
-                    draw_rectangle(VGA, x, y, size, 87);
-                    x-=1;
-                    if (x < 0) {
-                        x = 320-size;
-                    }
-                }
-                
-                //the left switch controlling the jumping
-                if (left_switch) {
-                    draw_rectangle(VGA, x, y, size, 87);
-                    x += 1;
-                    if (x + size > 320) {
-                        x = 0;
-                    }
-
-                }
-            }
+            draw_rectangle(VGA, x, y, size, 87);
+            handle_switch_control(&x, y, size);
             y--;
             draw_rectangle(VGA, x, y, size, color);
 
@@ -343,38 +341,11 @@ int main( void )
 
         //Jump down
         for (int i = 0; i < jump_height; i++){
-            draw_rectangle(VGA, x, y, size, 87);
             draw_all_platforms(platforms, amount_platforms);
-           if (get_sw()) {
-                long long switches = get_sw();
-
-                int right_switch = (switches >> (9)) & 0x1;
-                int left_switch = (switches) & 0x1;
-
-                if (right_switch) {
-                    draw_rectangle(VGA, x, y, size, 87);
-                    x-=1;
-                    if (x < 0) {
-                        x = 320-size;
-                    }
-                }
-    
-                if (left_switch) {
-                    draw_rectangle(VGA, x, y, size, 87);
-                    x += 1;
-                    if (x + size > 320) {
-                        x = 0;
-                    }
-
-                }
-                draw_character(VGA, x, y, size, color);
-            }
-            
-            //draw the character at the new position 
             draw_rectangle(VGA, x, y, size, 87);
-            //draw_character(VGA, x, y, size, color);
-            //increase the y-coordinates when jumping down
+            handle_switch_control(&x, y, size);
             y++;
+            draw_rectangle(VGA, x, y, size, color);
             //draw the character at the new position 
             draw_rectangle(VGA, x, y, size, color);
             
