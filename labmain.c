@@ -1,8 +1,9 @@
 //volatile const int led_delay = 100; 
 volatile int led_state = 0;
 volatile char *VGA = (volatile char *)0x08000000; 
-//coordinates 
-volatile int platform_coordinates[] = {150, 120, 200, 50, 110, 100, 210, 50, 0, 200};
+//x coordinates of platforms
+volatile int platform_coordinates[] = {150, 120, 30, 200, 50, 10, 110, 100, 210, 50, 0, 200, 24,};
+volatile int platform_amount = 13;
 volatile int current_platform_coordnr = 0;
 volatile int points = 0;
 volatile int amount_platforms = 3;
@@ -19,6 +20,7 @@ void set_leds(int led_mask) {
   *leds = led_mask;
 }
 
+//Choose which value to set the leds to
 void set_led_state(int led_state) {
 
     //leds 0-9 on the board
@@ -108,6 +110,7 @@ void set_displays(int display_number, int value) {
 
 }
 
+//Converts the points so the points can be correctly displayed on the hex displays.
 void set_points(int points) {
 
     int temp_points = points;  // Copy points to avoid altering it
@@ -133,8 +136,8 @@ void labinit(void)
   *ctrl = 0b111;
 }
 
-//draw the charachter
-void draw_rectangle(volatile char *VGA, int x, int y, int size, char color) {
+//draw a square
+void draw_square(volatile char *VGA, int x, int y, int size, char color) {
     for (int row = y; row < y + size; row++) {
         for (int col = x; col < x + size; col++) {
             // Check boundaries to avoid drawing outside the screen
@@ -145,15 +148,16 @@ void draw_rectangle(volatile char *VGA, int x, int y, int size, char color) {
     }
 }
 
+//draws the character and controls 360 movement for it.
 void draw_character(volatile char *VGA, int x, int y , int size, char color){
     //draw main
-    draw_rectangle(VGA, x, y, size, color);
+    draw_square(VGA, x, y, size, color);
 
     if(x < 0){
-        draw_rectangle(VGA, 320+x, y, size, color);
+        draw_square(VGA, 320+x, y, size, color);
     }
     else if(x + size > 320){
-        draw_rectangle(VGA, x-320, y, size, color);
+        draw_square(VGA, x-320, y, size, color);
     }
 
 }
@@ -183,7 +187,7 @@ struct platform {
     int length; 
 };
 
-
+//Draws every platform in the platforms array
 void draw_all_platforms(struct platform platforms[], int length){
     for(int i = 0; i < length; i++){
         //draw_all_platforms(platforms, 3);
@@ -194,6 +198,7 @@ void draw_all_platforms(struct platform platforms[], int length){
     }
 }
 
+//Generates a new platform
 void generate_new_platform(struct platform platforms[], int length){
     //remove first elemt and replace with the elements after it in the platform array
     //move all elements in array by one 
@@ -201,15 +206,18 @@ void generate_new_platform(struct platform platforms[], int length){
         struct platform temp = platforms[i+1];
         platforms[i] = temp;
     }
-    if(current_platform_coordnr == sizeof(platform_coordinates) - 1){
+
+    if (current_platform_coordnr > platform_amount - 1) {
         current_platform_coordnr = 0;
     }
     platforms[length-1].x_pos = platform_coordinates[current_platform_coordnr];
     platforms[length-1].y_pos = 100;
     platforms[length-1].length = 70;
+
     current_platform_coordnr ++;
 }
 
+//Fills in the background in light blue color
 void background(){
     //background coloring 
     for(int i = 0; i < 320 * 240; i++){
@@ -245,22 +253,14 @@ int main( void )
     //have three platforms in the game
     struct platform platforms[amount_platforms];
 
-    //Ground
-    draw_platform(VGA, 100, 220, 70, 10, 0x00);
-  
+    //Draw the initial platforms
     platforms[0] = (struct platform){120, 200, 70};
-    
-    //first platform
-    draw_platform(VGA, 40, 100, 70, 10, 0x00);
     platforms[1] = (struct platform){40,100,70};
-
-    //second platform
-    draw_platform(VGA, 150, 150, 70, 10, 0x00);
     platforms[2] = (struct platform){150, 150, 70};
 
-    background();
     while (1) {
 
+        //Draws all platforms
         draw_all_platforms(platforms, amount_platforms);
 
         //power up bar that depends on polling from a timer
@@ -277,7 +277,7 @@ int main( void )
                 points += 0b1100;
                 while(y > 70 ){
                     y--;
-                    draw_rectangle(VGA, x, y, size, 87);
+                    draw_character(VGA, x, y, size, 87);
                     draw_all_platforms(platforms, amount_platforms);
                     delays(100);
                 } 
@@ -289,7 +289,7 @@ int main( void )
 
         //Jump up
         for (int i = 0; i < jump_height; i++){
-            draw_rectangle(VGA, x, y, size, 87);
+            draw_character(VGA, x, y, size, 87);
             draw_all_platforms(platforms, amount_platforms);
             //changing the direction of the charcter trhough switches
             if (get_sw()) {
@@ -299,7 +299,7 @@ int main( void )
                 int left_switch = (switches) & 0x1;
                 //the right switch controlling the jumping
                 if (right_switch) {
-                    draw_rectangle(VGA, x, y, size, 87);
+                    draw_character(VGA, x, y, size, 87);
                     x-=1;
                     if (x < 0) {
                         x = 320-size;
@@ -308,7 +308,7 @@ int main( void )
                 
                 //the left switch controlling the jumping
                 if (left_switch) {
-                    draw_rectangle(VGA, x, y, size, 87);
+                    draw_character(VGA, x, y, size, 87);
                     x += 1;
                     if (x + size > 320) {
                         x = 0;
@@ -317,7 +317,7 @@ int main( void )
                 }
             }
             y--;
-            draw_rectangle(VGA, x, y, size, color);
+            draw_character(VGA, x, y, size, color);
 
         
             //specifially when colliding with the platform the platforms should be genereted
@@ -333,7 +333,7 @@ int main( void )
                 }
             }
 
-            draw_rectangle(VGA, x, y, size, color);
+            draw_character(VGA, x, y, size, color);
             delays(100000);
         }
 
@@ -343,7 +343,7 @@ int main( void )
 
         //Jump down
         for (int i = 0; i < jump_height; i++){
-            draw_rectangle(VGA, x, y, size, 87);
+            draw_character(VGA, x, y, size, 87);
             draw_all_platforms(platforms, amount_platforms);
            if (get_sw()) {
                 long long switches = get_sw();
@@ -352,7 +352,7 @@ int main( void )
                 int left_switch = (switches) & 0x1;
 
                 if (right_switch) {
-                    draw_rectangle(VGA, x, y, size, 87);
+                    draw_character(VGA, x, y, size, 87);
                     x-=1;
                     if (x < 0) {
                         x = 320-size;
@@ -360,7 +360,7 @@ int main( void )
                 }
     
                 if (left_switch) {
-                    draw_rectangle(VGA, x, y, size, 87);
+                    draw_character(VGA, x, y, size, 87);
                     x += 1;
                     if (x + size > 320) {
                         x = 0;
@@ -371,12 +371,12 @@ int main( void )
             }
             
             //draw the character at the new position 
-            draw_rectangle(VGA, x, y, size, 87);
+            draw_character(VGA, x, y, size, 87);
             //draw_character(VGA, x, y, size, color);
             //increase the y-coordinates when jumping down
             y++;
             //draw the character at the new position 
-            draw_rectangle(VGA, x, y, size, color);
+            draw_character(VGA, x, y, size, color);
             
             //platform that the charachetr is colliding with
             int platform_nr = 0;
@@ -394,6 +394,8 @@ int main( void )
                 }
                 
             }
+
+            //If there was a collision move all platforms down by 40 pixels.
             if(collision) {
                 for(int j = 0; j < amount_platforms; j++){
                     draw_platform(VGA, platforms[j].x_pos, platforms[j].y_pos, 70, 10, 87 );
@@ -411,12 +413,13 @@ int main( void )
                     }
                 }
 
+                //Increase and display the points
                 points += 0b1;
                 set_points(points);
 
                 break;
             }
-            //death 
+            //If the character hits the bottom of teh screen the player dies
             if(y + size == 240) {
                 for (int i = 0; i < 320 * 240; i++) {
                 VGA[i] = 320; 
@@ -428,7 +431,7 @@ int main( void )
         }
 
 
-        draw_rectangle(VGA, x, y, size, color);
+        draw_character(VGA, x, y, size, color);
         delays(100000);
     }
     print(points);
