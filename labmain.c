@@ -135,7 +135,7 @@ void labinit(void)
   *ctrl = 0b111;
 }
 
-//draw a square
+//draw a character
 void draw_square(volatile char *VGA, int x, int y, int size, char color) {
     for (int row = y; row < y + size; row++) {
         for (int col = x; col < x + size; col++) {
@@ -248,8 +248,9 @@ void handle_switch_control(int *x, int y, int size) {
 
 
 
-int main( void )
+int game( void )
 {
+    
     //Sets the score to 0
     for (int i = 0; i < 6; i++) {
       set_displays(i, 0);
@@ -311,7 +312,7 @@ int main( void )
         //Jump up
         for (int i = 0; i < jump_height; i++){
             draw_all_platforms(platforms, amount_platforms);
-            draw_rectangle(VGA, x, y, size, 87);
+            draw_character(VGA, x, y, size, 87);
             handle_switch_control(&x, y, size);
             y--;
             draw_character(VGA, x, y, size, color);
@@ -341,10 +342,10 @@ int main( void )
         //Jump down
         for (int i = 0; i < jump_height; i++){
             draw_all_platforms(platforms, amount_platforms);
-            draw_rectangle(VGA, x, y, size, 87);
+            draw_character(VGA, x, y, size, 87);
             handle_switch_control(&x, y, size);
             y++;
-            draw_rectangle(VGA, x, y, size, color);
+            draw_character(VGA, x, y, size, color);
             //draw the character at the new position 
             draw_character(VGA, x, y, size, color);
             
@@ -394,7 +395,9 @@ int main( void )
                 for (int i = 0; i < 320 * 240; i++) {
                 VGA[i] = 320; 
                 }
-                print("You died");
+                print("You died-_-");
+                print("\nYou acheived: ");
+                print_dec(points);
                 return 0;
                 }
             delays(100000);
@@ -406,4 +409,20 @@ int main( void )
     }
     print(points);
     return 0;
+}
+
+int main( void ){
+    unsigned int game_time;
+    //clear mcycle csr 
+    asm volatile ("csrw mcycle, x0");
+
+    game();
+    
+    //read the mcycle value into game_time
+    asm("csrr %0, mcycle" : "=r" (game_time));
+
+    print("\nTime for game() was: ");
+    print_dec(game_time);
+    print("\n");
+
 }
