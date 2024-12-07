@@ -1,18 +1,65 @@
+/*
+- This program was made as a project for the course IS1500.
+- The program is a platform jumping mini-game for the DE10-Lite board.
+- The switches on the game controls the character and the player is able 
+to boost once all 10 leds are lit. Using the button the character will boost 
+when falling down on a platform.
+- Authors: Linn Benali and Ida Pylvänäinen
+- Date: 2024-12-07
+*/
+
+
 //volatile const int led_delay = 100; 
 volatile int led_state = 0;
 volatile char *VGA = (volatile char *)0x08000000; 
-//x coordinates of platforms
-volatile int platform_coordinates[] = {150, 120, 30, 200, 50, 10, 110, 100, 210, 50, 0, 200, 24,};
+//x coordinates of all genereated platforms
+volatile int platform_coordinates[] = {150, 120, 30, 200, 50, 10, 110, 100, 210, 50, 0, 200, 24};
+//number of platform x-coordinates
 volatile int platform_amount = 13;
+//which platform coordinate x-coordinate we are currently using
 volatile int current_platform_coordnr = 0;
+//total points in the game
 volatile int points = 0;
+//number of platforms that can be seen on the screen
 volatile int amount_platforms = 3;
 
-void handle_interrupt(unsigned cause) {
+void handle_interrupt(unsigned cause) {}
 
+//print the instruction to the user
+void instruction(){
+    print("-----------------------------------------------\n");
+    print("Welcome to this platform jumping minigame!\n\n");
+    
+    print("CONTROLS: The controls on the DE10-lite board controls the character:\n");
+    print("The leftmost switch turns the character to the left and the rightmost switch turns it to the right.\n");
+    print("Don't forget the 360 movement when reaching the left edge or the right edge of the screen.\n");
+    
+    print("GOAL: Get as many points as possible.\n");
+    print("The creator's highscore is 104, can you get a better score???\n");
+    
+    print("BOOSTER: Once all the 10 LEDs are lit you can boost up to the top by\n");
+    print("pressing the button while falling onto a platform.\n");
+    
+    print("REMARK: This is only a simple game created for educational purposes :)\n\n");
+    
+    print("Good luck!\n");
 }
 
-//set the leds on the board
+//when reaching the bottom of the screen this message should be printed
+void print_death_message() {
+    print("\n");
+    print("========================================================\n");
+    print("||  Y     Y                                            ||\n");
+    print("||   YY YY   OOOOO   U     U       DDDDD   III  EEEEE ||\n");
+    print("||     Y    O     O  U     U       D    D   I   E     ||\n");
+    print("||     Y    O     O  U     U       D     D  I   EEEE  ||\n");
+    print("||     Y    O     O  U     U       D    D   I   E     ||\n");
+    print("||     Y     OOOOO    UUUUU        DDDDD   III  EEEEE ||\n");
+    print("========================================================\n");
+    print("\n");
+}
+
+//set the leds on the board, decide the which leds should be lit using the led_mask
 void set_leds(int led_mask) {
   volatile int *leds = (volatile int*) 0x04000000;
 
@@ -53,7 +100,7 @@ void set_led_state(int led_state) {
 }
 
 
-//delay
+//delay in the game
 void delays (int count){
     for(volatile int i = 0; i < count; i++){
         asm volatile("nop");
@@ -75,34 +122,34 @@ void set_displays(int display_number, int value) {
   //display the right value
   switch (value) {
     case 0:
-      output = 0b01000000;
+      output = 0b11000000;
       break;
     case 1:
-      output = 0b01111001;
+      output = 0b11111001;
       break;
     case 2:
-      output = 0b00100100;
+      output = 0b10100100;
       break;
     case 3:
-      output = 0b00110000;
+      output = 0b10110000;
       break;
     case 4:
-      output = 0b00011001;
+      output = 0b10011001;
       break;
     case 5:
-      output = 0b00010010;
+      output = 0b10010010;
       break;
     case 6:
-      output = 0b00000010;
+      output = 0b10000010;
       break;
     case 7:
-      output = 0b01111000;
+      output = 0b11111000;
       break;
     case 8:
-      output = 0b00000000;
+      output = 0b10000000;
       break;
     case 9:
-      output = 0b00010000;
+      output = 0b10010000;
       break;
   }
   *segm7 = output;
@@ -135,8 +182,9 @@ void labinit(void)
   *ctrl = 0b111;
 }
 
-//draw a character
-void draw_square(volatile char *VGA, int x, int y, int size, char color) {
+
+//draws the character and create 360 movement for it.
+void draw_character(volatile char *VGA, int x, int y , int size, char color){
     for (int row = y; row < y + size; row++) {
         for (int col = x; col < x + size; col++) {
             // Check boundaries to avoid drawing outside the screen
@@ -144,19 +192,6 @@ void draw_square(volatile char *VGA, int x, int y, int size, char color) {
                 VGA[row * 320 + col] = color; // Calculate the framebuffer index
             }
         }
-    }
-}
-
-//draws the character and controls 360 movement for it.
-void draw_character(volatile char *VGA, int x, int y , int size, char color){
-    //draw main
-    draw_square(VGA, x, y, size, color);
-
-    if(x < 0){
-        draw_square(VGA, 320+x, y, size, color);
-    }
-    else if(x + size > 320){
-        draw_square(VGA, x-320, y, size, color);
     }
 
 }
@@ -179,7 +214,7 @@ void draw_platform(volatile char *VGA, int x, int y, int size_x, int size_y, cha
     }
 }
 
-//platform struct
+//platform information: thier x-position, y-position and the total length of platform horizontally
 struct platform {
     int x_pos;
     int y_pos;
@@ -189,10 +224,10 @@ struct platform {
 //Draws every platform in the platforms array
 void draw_all_platforms(struct platform platforms[], int length){
     for(int i = 0; i < length; i++){
-        //draw_all_platforms(platforms, 3);
         int x = platforms[i].x_pos;
         int y = platforms[i].y_pos;
         int size_x = platforms[i].length;
+        //draw the platform using the draw_platform function
         draw_platform(VGA, x, y, size_x, 10,0);
     }
 }
@@ -205,13 +240,16 @@ void generate_new_platform(struct platform platforms[], int length){
         struct platform temp = platforms[i+1];
         platforms[i] = temp;
     }
+    //if we reach the end of the x-coordinate array we will start again form the first
     if (current_platform_coordnr > platform_amount - 1) {
         current_platform_coordnr = 0;
     }
+    //take a new x-coordinate from the array
     platforms[length-1].x_pos = platform_coordinates[current_platform_coordnr];
     platforms[length-1].y_pos = 100;
     platforms[length-1].length = 70;
 
+    //make sure we take the next upcoming x-coordinate in the array next time
     current_platform_coordnr ++;
 }
 
@@ -223,14 +261,21 @@ void background(){
     }
 }
 
+//this handles the controls of the character
 void handle_switch_control(int *x, int y, int size) {
+    //get the switch input from the player
     int switches = get_sw();
 
+    //the value when the rightmost switch is pushed
     int right_switch = (switches >> 9) & 0x1;
+    //the value when the leftmost switch is pushed
     int left_switch = switches & 0x1;
 
+    //if the rightmost switch is pressed change the x coordinate of the character
+    //and if 
     if (right_switch) {
         *x -= 1;
+        //change the character's x coordinate when reaching the edges
         if (*x < 0) {
             *x = 320 - size;
         }
@@ -238,20 +283,22 @@ void handle_switch_control(int *x, int y, int size) {
 
     if (left_switch) {
         *x += 1;
+        //change the character's x coordinate when reaching the edges
         if (*x + size > 320) {
             *x = 0;
         }
     }
+    //draw the character
     draw_character(VGA, x, y, size, 87);
 }
 
-
-
-
-int game( void )
+//main game program 
+int main( void )
 {
-    
-    //Sets the score to 0
+    //print the instruction to the user
+    instruction();
+
+    //Sets the score to 0 on the hexadecimal display
     for (int i = 0; i < 6; i++) {
       set_displays(i, 0);
     }  
@@ -262,23 +309,25 @@ int game( void )
     //timeout
     volatile unsigned short* timer_TO = (unsigned short*) 0x4000020;
     
-    //charachter info
+    //charachter stats created as local variables
     int x = 160;
     int y = 200;
     int size = 20;
     int color = 0x00;
 
+    //the juming height of the character can be modified here
     int jump_height = 70;
 
+    //Make the background blue
     background();
 
-    //have three platforms in the game
+    //have a certain amount of platforms in the game
     struct platform platforms[amount_platforms];
 
     //Draw the initial platforms
+    platforms[2] = (struct platform){40,100,70};
+    platforms[1] = (struct platform){150, 150, 70};
     platforms[0] = (struct platform){120, 200, 70};
-    platforms[1] = (struct platform){40,100,70};
-    platforms[2] = (struct platform){150, 150, 70};
 
     while (1) {
 
@@ -395,9 +444,9 @@ int game( void )
                 for (int i = 0; i < 320 * 240; i++) {
                 VGA[i] = 320; 
                 }
-                print("You died-_-");
                 print("\nYou acheived: ");
                 print_dec(points);
+                print_death_message();
                 return 0;
                 }
             delays(100000);
@@ -411,18 +460,57 @@ int game( void )
     return 0;
 }
 
-int main( void ){
-    unsigned int game_time;
-    //clear mcycle csr 
-    asm volatile ("csrw mcycle, x0");
+// int main(void) {
+//     // Clock cycles that elapsed.
+//     unsigned int game_time;
+//     unsigned int game_instr;
+//     unsigned int game_i_stall;
+//     unsigned int game_d_stall;
+//     unsigned int game_data_hazard_stall;
+//     unsigned int game_alu_stall;
 
-    game();
+//     // Clear mcycle CSR
+//     asm volatile("csrw mcycle, x0");
+//     // Clear minstret CSR
+//     asm volatile("csrw minstret, x0");
     
-    //read the mcycle value into game_time
-    asm("csrr %0, mcycle" : "=r" (game_time));
+//     // Call the game function
+//     game();
 
-    print("\nTime for game() was: ");
-    print_dec(game_time);
-    print("\n");
+//     // Read the mcycle value into game_time
+//     asm volatile("csrr %0, mcycle" : "=r" (game_time));
+//     // Read the minstret value into game_instr
+//     asm volatile("csrr %0, minstret" : "=r" (game_instr));
+//     //read the i cache stall counter into game_i_stall
+//     asm volatile("csrr %0, mhpmcounter6" : "=r"(game_i_stall));
+//     //read the d cache stall counter into game_d_stall
+//     asm volatile("csrr %0, mhpmcounter7" : "=r"(game_d_stall));
+//     //read from the data hazard stall counter
+//     asm volatile("csrr %0, mhpmcounter8" : "=r"(game_data_hazard_stall));
+//     //read from the alu stall counter
+//     asm volatile("csrr %0, mhpmcounter9" : "=r"(game_alu_stall));
+    
 
-}
+
+//     // Print results
+//     print("\nTime/clock cycles for game() was: ");
+//     print_dec(game_time);
+//     print("\nInstructions for game() were: ");
+//     print_dec(game_instr);
+//     print("\n");
+//     print("\nI-cache stall counter for game() were: ");
+//     print_dec(game_i_stall);
+//     print("\nD-cache stall counter for game() were: ");
+//     print_dec(game_d_stall);
+//     print("\nData hazard stall counter for game() were: ");
+//     print_dec(game_data_hazard_stall);
+//     print("\nALU stall counter for game() were: ");
+//     print_dec(game_alu_stall);
+    
+
+//     return 0;
+// }
+//0,5997 for 7 points
+//o,5997 for 3 points
+//I-cache stall counter for game() were: 9165
+//D-cache stall counter for game() were: 227806078
