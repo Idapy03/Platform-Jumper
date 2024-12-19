@@ -9,7 +9,6 @@ when falling down on a platform.
 */
 
 
-//volatile const int led_delay = 100; 
 volatile int led_state = 0;
 volatile char *VGA = (volatile char *)0x08000000; 
 //x coordinates of all genereated platforms
